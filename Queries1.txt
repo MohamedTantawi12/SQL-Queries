@@ -1,0 +1,86 @@
+Question 1
+We want to understand more about the movies that families are watching. 
+The following categories are considered family movies: Animation, Children, Classics, Comedy, Family and Music.
+
+SELECT ff.title, c.name, count(*) rental_count
+FROM Category c
+JOIN Film_Category f
+on c.category_id = f.category_id
+JOIN Inventory i
+on i.film_id = f.film_id
+JOIN Rental r
+on r.inventory_id = i.inventory_id
+JOIN Film ff
+on ff.film_id = f.film_id
+WHERE c.name in ('Animation', 'Children', 'Classics', 'Comedy', 'Family ', 'Music')
+GROUP by 1,2
+ORDER by 2
+
+Question 4:
+We want to find out how the two stores compare in their count of rental orders during every month for all the years we have data for. 
+Write a query that returns the store ID for the store, the year and month and the number of rental orders each store has fulfilled for 
+that month. Your table should include a column for each of the following: year, month, store ID and count of rental orders fulfilled during that month.
+
+SELECT strftime('%m', r.rental_date) Rental_mounth, strftime('%Y', r.rental_date) Rental_year, ss.store_id Store_Id, count(*) Count_rentals
+FROM rental r
+JOIN staff s
+on s.staff_id = r.staff_id
+JOIN store ss
+on ss.store_id = s.staff_id
+GROUP by 1, 2, 3
+ORDER by 4 DESC
+
+Question 5
+We would like to know who were our top 10 paying customers, how many payments they made on a monthly basis during 2007, 
+and what was the amount of the monthly payments. Can you write a query to capture the customer name, month and year of payment, 
+and total payment amount for each month by these top 10 paying customers?
+
+with t1 as
+(SELECT c.first_name, c.last_name, sum(p.amount) pay_amount
+FROM customer c
+JOIN payment p
+on p.customer_id = c.customer_id
+GROUP by  1, 2
+ORDER by 3 DESC
+LIMIT 10)
+
+SELECT strftime('%Y %m', p.payment_date) pay_mon, c.first_name || ' ' || c.last_name as fullname, count(*) pay_counpermon, sum(p.amount) pay_amount
+FROM customer c
+JOIN payment p
+on p.customer_id = c.customer_id
+JOIN t1
+where t1.first_name = c.first_name and t1.last_name = c.last_name
+GROUP by 1, 2
+ORDER by 2
+
+Question 6
+
+Finally, for each of these top 10 paying customers, I would like to find out the difference across their monthly payments during 2007. 
+Please go ahead and write a query to compare the payment amounts in each successive month. 
+Repeat this for each of these 10 paying customers. Also, it will be tremendously helpful if you can identify the customer name who paid 
+the most difference in terms of payments.
+
+with t1 as
+(SELECT c.first_name, c.last_name, sum(p.amount) pay_amount
+FROM customer c
+JOIN payment p
+on p.customer_id = c.customer_id
+GROUP by  1, 2
+ORDER by 3 DESC
+LIMIT 10),
+
+t2 as
+(SELECT strftime('%Y %m', p.payment_date) pay_mon, c.first_name || ' ' || c.last_name as fullname, count(*) pay_counpermon, 
+sum(p.amount) pay_amount,
+sum(p.amount) - lag(sum(p.amount)) OVER (PARTITION BY c.first_name ORDER BY strftime('%m', p.payment_date)) diff
+FROM customer c
+JOIN payment p
+on p.customer_id = c.customer_id
+JOIN t1
+where t1.first_name = c.first_name and t1.last_name = c.last_name
+GROUP by 1, 2
+ORDER by 2)
+
+
+SELECT fullname, max(diff) max_diff
+FROM t2
